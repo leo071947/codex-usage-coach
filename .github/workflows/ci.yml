@@ -1,0 +1,22 @@
+name: Verify plugin
+on: [push, pull_request, workflow_dispatch]
+jobs:
+  core:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-14, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
+      - if: runner.os == 'Windows'
+        run: npm run test:windows
+      - if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          for script in install-macos.sh start-macos.sh uninstall-macos.sh plugins/codex-usage-coach/scripts/macos/*.sh; do bash -n "$script"; done
+          APP=$(bash plugins/codex-usage-coach/scripts/macos/build.sh "$RUNNER_TEMP/cat-runtime")
+          "$APP/Contents/MacOS/CodexUsageCat" --self-test

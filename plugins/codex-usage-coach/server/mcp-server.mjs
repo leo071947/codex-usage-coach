@@ -9,6 +9,7 @@ import { collect, getConfig, resetConfigCache } from './lib/collect.mjs';
 import { saveConfig, publicConfig } from './lib/config.mjs';
 import { dashboardPage, dashboardBody } from './lib/dashboard.mjs';
 import { dialState } from './lib/dial.mjs';
+import { companionCommand } from './lib/companion-platform.mjs';
 import { appendLog, ensureDir, locations, writeFileAtomic } from './lib/paths.mjs';
 import { historyTable, planCard, reportMarkdown, statusCard } from './lib/render.mjs';
 import { fmtDateTime, fmtDur, fmtInt, fmtTokens } from './lib/util.mjs';
@@ -27,7 +28,6 @@ function log(...args) {
 // ---------------------------------------------------------------- 数据装配（实现在 lib/collect.mjs）
 
 const PLUGIN_ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const DIAL_SCRIPT = path.join(PLUGIN_ROOT, 'scripts', 'dial.ps1');
 
 function dialWindowPidFile() {
   return path.join(path.dirname(locations.dial()), 'dial-window.pid');
@@ -76,38 +76,36 @@ async function launchDial({ interval = 30, restart = false } = {}) {
     } catch {
       /* 忽略 */
     }
+    if (process.platform === 'darwin') {
+      // Let AppKit terminate the feed and remove its PID before `open` can
+      // reuse the same application instance during a restart.
+      await new Promise((resolve, reject) => {
+        const deadline = Date.now() + 5000;
+        const poll = () => {
+          try { process.kill(existing, 0); } catch { resolve(); return; }
+          if (Date.now() >= deadline) { reject(new Error('Mac 猫咪仍在退出，请稍后重试。')); return; }
+          setTimeout(poll, 100);
+        };
+        poll();
+      });
+    }
     try {
       fs.rmSync(dialWindowPidFile(), { force: true });
     } catch {
       /* 忽略 */
     }
   }
-  if (!fs.existsSync(DIAL_SCRIPT)) throw new Error(`找不到表盘脚本：${DIAL_SCRIPT}`);
-  const isWin = process.platform === 'win32';
-  // The companion owns its lifetime through the Codex host window, rather
-  // than the MCP session, so reloading a chat does not terminate the pet.
-  const winArgs = [
-    '/d',
-    '/s',
-    '/c',
-    `start "" powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -WindowStyle Hidden -File "${DIAL_SCRIPT}" -Interval ${interval}`,
-  ];
-  const [ps, args] = isWin
-    ? ['cmd.exe', winArgs]
-    : ['pwsh', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', DIAL_SCRIPT, '-Interval', String(interval)]];
-  const child = spawn(ps, args, {
-    detached: true,
-    stdio: 'ignore',
-    cwd: PLUGIN_ROOT,
-    windowsHide: true,
-    windowsVerbatimArguments: isWin,
+  const command = companionCommand(process.platform, PLUGIN_ROOT, { interval, home: locations.codexHome() });
+  const child = spawn(command.executable, command.args, {
+    detached: true, stdio: 'ignore', cwd: PLUGIN_ROOT, windowsHide: true,
+    windowsVerbatimArguments: command.windowsVerbatimArguments,
   });
   let spawnError = null;
   child.on('error', (err) => {
     spawnError = err;
   });
   child.unref();
-  const ready = spawnError ? false : await waitForDialReady(3000);
+  const ready = spawnError ? false : await waitForDialReady(command.readyTimeout);
   return { pid: dialWindowPid() || child.pid || null, started: true, ready, error: spawnError ? String(spawnError.message || spawnError) : null };
 }
 
@@ -469,14 +467,14 @@ async function callTool(name, args = {}) {
       const interval = Math.max(10, Math.min(600, Math.round(Number(args.interval) || state.config.autoRefreshSec * 2 || 30)));
       const launched = await launchDial({ interval, restart: !!args.restart });
       const lines = [
-        launched.started ? '悬浮表盘已启动（桌面右下角）。' : '悬浮表盘已经在运行，没有重复启动。',
+        launched.started ? '猫咪客户端已启动（自动定位 Codex 输入框；macOS 首次使用需授予辅助功能权限）。' : '悬浮表盘已经在运行，没有重复启动。',
         `刷新间隔：每 ${interval} 秒`,
         `本周余量：${state.metrics.weekly ? state.metrics.weekly.remainingPct.toFixed(1) + '%' : '未知'}`,
         `今日余量：${state.plan.todayRemainingTokens != null ? fmtTokens(state.plan.todayRemainingTokens) : '未知'} tokens（今日额度 ${fmtTokens(state.plan.todayAllowanceTokens || 0)}）`,
         '用法：左键按住可拖动；单击展开/收起详情；右键有「立即刷新 / 打开详细面板 / 退出表盘」。',
       ];
       if (launched.started && launched.ready === false) {
-        lines.push(`⚠ 表盘进程没能确认启动（${launched.error || '3 秒内没有写出 pid 文件'}）。可以再试一次 show_dial restart=true，或看日志：${path.join(path.dirname(locations.dial()), 'dial-error.log')}`);
+        lines.push(`⚠ 表盘进程没能确认启动（${launched.error || '启动等待超时；Mac 请检查 mac-build.log'}）。可以再试一次 show_dial restart=true，或看日志：${path.join(path.dirname(locations.dial()), 'dial-error.log')}`);
       }
       return {
         text: lines.join('\n'),
@@ -628,7 +626,7 @@ function send(obj) {
 
 export function main() {
   // Start only in the real stdio entrypoint, never during imports/tests.
-  if (process.platform === 'win32' && process.env.USAGE_COACH_AUTO_PET !== '0') {
+  if (['win32', 'darwin'].includes(process.platform) && process.env.USAGE_COACH_AUTO_PET !== '0') {
     launchDial().catch(err => log('auto pet startup failed', err.message));
   }
   const reader = createReader((msg) => {

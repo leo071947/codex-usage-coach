@@ -2,7 +2,9 @@
 
 本地 Codex 用量监控插件，附带跟随输入框行走的像素猫咪。
 
-**Local Codex usage monitoring with a pixel cat companion for Windows.** No API key or additional login is required. The companion supports Chinese and English.
+**Local Codex usage monitoring with a pixel cat companion for Windows and a macOS native source implementation.** No API key or additional login is required. The companion supports Chinese and English.
+
+macOS 实现目前为**待实机验收的源码版本**：已提供原生窗口、权限引导、自动定位与生命周期实现；当前开发环境为 Windows，尚未在 Mac 上完成编译和交互验证。仓库中的 GitHub Actions 会在推送后执行 macOS 编译与非交互自测，不代表已验证真实 Codex 输入框、辅助功能授权或多屏行为。
 
 ## 功能
 
@@ -17,10 +19,32 @@
 ## 环境要求
 
 - Windows 10/11，Windows PowerShell 5.1、.NET Framework 和可正常运行的 Codex 桌面版。
-- Node.js 18+。启动器会尝试使用 Codex 自带运行时，也可自行安装 Node。
+- Node.js 18+，`node` 需要在 Codex 进程的 PATH 中。MCP 使用同一份跨平台 Node 入口；修改 PATH 后请重启 Codex。
 - Codex CLI 支持 `plugin marketplace` 和 `plugin add`。
 
-桌宠及安装脚本仅支持 Windows；日志分析服务为 Node.js 实现。无需安装 npm 依赖。
+Windows 使用 PowerShell/.NET；macOS 使用 Swift/AppKit，要求 macOS 12+、Xcode Command Line Tools 和辅助功能权限。源码在本机编译，Intel 与 Apple Silicon 分别生成对应架构，不提供未经验证的预编译安装包。无需安装 npm 依赖。
+
+## macOS 安装与启动（源码版）
+
+下载完整仓库后，在终端进入仓库目录：
+
+```bash
+bash install-macos.sh
+```
+
+安装器要求 `node` 和 `codex` 在 PATH 中；Codex CLI 路径也可通过 `CODEX_CLI_PATH` 指定。首次本机编译需要 Xcode Command Line Tools，未安装时运行 `xcode-select --install` 并完成系统安装提示。编译成功后注册同一个本地市场和插件，无需另建 Mac 仓库。
+
+也可直接测试猫咪，无需先注册插件：
+
+```bash
+bash start-macos.sh
+```
+
+首次打开时，在 **系统设置 → 隐私与安全性 → 辅助功能** 中允许 **Codex Usage Cat**。菜单栏 `CAT` 菜单提供权限设置入口、语言、动效和退出；授权由用户操作，程序不会替你修改系统权限。找不到输入框时隐藏，不使用猜测坐标。代码只读取控件名称、类型与几何位置，不读取输入框内容。
+
+运行时生成在 `${CODEX_HOME:-~/.codex}/usage-coach/runtime/CodexUsageCat.app`，编译日志在 `usage-coach/mac-build.log`。这是本机编译、临时签名的开发应用，不是 Apple 公证发行包；更新二进制后系统可能需要重新授予辅助功能权限。
+
+Mac 客户端复用相同 121 帧、12 fps 行走停步、左右错峰上浮爆裂和进度填充；使用原生 macOS 菜单。窗口保持普通层级，仅 Codex 在前台时出现，退出 Codex 后关闭数据泵并退出。用 `bash uninstall-macos.sh` 移除插件，默认保留使用数据和编译缓存。
 
 ## 下载和安装
 
@@ -42,7 +66,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start-dial.ps1
 ```
 
-**English quick start:** download and extract this repository, open PowerShell in its root directory, then run `install.ps1` with the command above. Reload the plugin in Codex. Use `start-dial.ps1` for a standalone local launch. Right-click the cat and choose **Language → English**. Keep the extracted directory available for future local marketplace updates.
+**English quick start:** Windows: run `install.ps1` or `start-dial.ps1`. macOS source preview: install Node.js 18+, the Codex CLI, and Xcode Command Line Tools, then run `bash install-macos.sh` or `bash start-macos.sh`; grant Accessibility access to Codex Usage Cat. Reload the plugin in Codex. Right-click the cat to choose English. Keep the extracted directory available for local marketplace updates. Mac compilation and UI acceptance are pending until the macOS CI job and a real Mac test pass.
 
 若插件缓存更新提示“拒绝访问”，先关闭 Codex 和正在运行的猫咪，再重新执行安装。更新仓库文件后需重新安装或刷新插件缓存，已加载的旧进程不会自动热更新。
 
@@ -103,10 +127,13 @@ codex-usage-coach/
 │  ├─ .mcp.json
 │  ├─ assets/                 # 图标、121 帧猫咪和图片许可
 │  ├─ scripts/                # Windows 窗口、行走和定位
+│  │  └─ macos/              # Swift/AppKit 客户端与本机编译
 │  ├─ server/                 # MCP、数据泵、扫描和预算
 │  └─ skills/usage-coach/
 ├─ tests/
 ├─ install.ps1 / uninstall.ps1 / start-dial.ps1
+├─ install-macos.sh / start-macos.sh / uninstall-macos.sh
+├─ .github/workflows/ci.yml  # Windows/macOS/Linux 核心验证和 Mac 编译
 ├─ LICENSE
 └─ package.json
 ```

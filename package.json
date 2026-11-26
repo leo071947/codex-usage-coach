@@ -9,7 +9,7 @@
     "codex-usage-coach": "plugins/codex-usage-coach/server/mcp-server.mjs"
   },
   "scripts": {
-    "test": "node tests/run.mjs && node tests/release.mjs",
+    "test": "node tests/run.mjs && node tests/platform.mjs && node tests/release.mjs",
     "test:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/windows.ps1",
     "pet": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File start-dial.ps1",
     "start": "node plugins/codex-usage-coach/server/mcp-server.mjs",

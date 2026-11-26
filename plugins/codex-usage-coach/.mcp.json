@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "usage_coach": {
-      "command": "cmd.exe",
-      "args": ["/d", "/s", "/c", "call", "./scripts/launch-mcp.cmd", "./server/mcp-server.mjs"],
+      "command": "node",
+      "args": [
+        "./server/mcp-server.mjs"
+      ],
       "cwd": ".",
       "enabled": true,
       "env_vars": [
@@ -14,11 +16,16 @@
         "USERPROFILE",
         "LOCALAPPDATA",
         "APPDATA",
-        "PATH"
+        "PATH",
+        "HOME",
+        "USAGE_COACH_AUTO_PET",
+        "USAGE_COACH_SESSIONS"
       ],
-      "startup_timeout_sec": 30,
+      "startup_timeout_sec": 90,
       "tool_timeout_sec": 120,
-      "omit_tools_from": ["deferred"]
+      "omit_tools_from": [
+        "deferred"
+      ]
     }
   }
 }

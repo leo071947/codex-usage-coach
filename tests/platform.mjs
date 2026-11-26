@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { companionCommand } from '../plugins/codex-usage-coach/server/lib/companion-platform.mjs';
+const root='/tmp/plugin with spaces';
+const mac=companionCommand('darwin',root,{node:'/path with spaces/node',home:'/home with spaces/codex',interval:20});
+assert.equal(mac.executable,'/bin/bash');
+assert.equal(mac.args[0],path.join(root,'scripts','macos','launch.sh'));
+assert.ok(mac.args.includes('/path with spaces/node'));
+assert.ok(mac.args.includes('/home with spaces/codex'));
+assert.equal(mac.windowsVerbatimArguments,false);
+assert.ok(mac.readyTimeout>=30000);
+const win=companionCommand('win32',root,{interval:9999});
+assert.equal(win.executable,'cmd.exe');
+assert.ok(win.args.at(-1).includes('-Interval 600'));
+assert.throws(()=>companionCommand('linux',root),/Windows/);
+console.log('Windows/macOS launch selection and argument boundaries passed.');

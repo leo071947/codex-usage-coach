@@ -60,6 +60,9 @@ if (-not (Test-Path -LiteralPath (Join-Path $root '.agents\plugins\marketplace.j
 }
 
 Write-Step "查找 codex.exe"
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+  throw 'Install Node.js 18+ and ensure node is available in PATH before installing this cross-platform plugin.'
+}
 $codex = Find-CodexExe
 Write-Ok $codex
 
