@@ -1,0 +1,20 @@
+{
+  "name": "lucky-usage",
+  "interface": {
+    "displayName": "Lucky Usage"
+  },
+  "plugins": [
+    {
+      "name": "codex-usage-coach",
+      "source": {
+        "source": "local",
+        "path": "./plugins/codex-usage-coach"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

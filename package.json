@@ -1,0 +1,21 @@
+{
+  "name": "codex-usage-coach",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Codex 用量管家：本地解析会话日志，规划每天建议用量、监控剩余额度与重置时间",
+  "license": "SEE LICENSE IN LICENSE",
+  "bin": {
+    "codex-usage-coach": "plugins/codex-usage-coach/server/mcp-server.mjs"
+  },
+  "scripts": {
+    "test": "node tests/run.mjs && node tests/release.mjs",
+    "test:windows": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File tests/windows.ps1",
+    "pet": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File start-dial.ps1",
+    "start": "node plugins/codex-usage-coach/server/mcp-server.mjs",
+    "dashboard": "node -e \"import('./plugins/codex-usage-coach/server/mcp-server.mjs').then(m=>m.callTool('open_dashboard',{serve:true,open:true}))\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

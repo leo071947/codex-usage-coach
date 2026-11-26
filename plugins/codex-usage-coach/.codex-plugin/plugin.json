@@ -1,0 +1,45 @@
+{
+  "name": "codex-usage-coach",
+  "version": "0.1.0",
+  "description": "本地 Codex 用量监控与像素猫咪，自动定位输入框，显示周额度与 5 小时窗口余量。",
+  "author": {
+    "name": "lucky-penguin"
+  },
+  "license": "MIT",
+  "keywords": [
+    "usage",
+    "quota",
+    "rate-limit",
+    "budget",
+    "token",
+    "dashboard",
+    "monitor",
+    "dial",
+    "widget"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codex 用量管家",
+    "shortDescription": "每天用多少？还剩多少？什么时候刷新？",
+    "longDescription": "离线解析本机 Codex 会话日志，展示额度快照、每日预算、历史用量与重置时间。Windows 像素猫咪跟随 Codex 输入框行走，停步时播放额度气泡，右键在头顶查看详情；支持中英文。另提供网页仪表盘与 Markdown 报告。",
+    "developerName": "lucky-penguin",
+    "category": "Productivity",
+    "capabilities": [
+      "Interactive",
+      "Read",
+      "Write"
+    ],
+    "brandColor": "#9B6DD0",
+    "logo": "./assets/logo.svg",
+    "logoDark": "./assets/logo-dark.svg",
+    "composerIcon": "./assets/logo.svg",
+    "defaultPrompt": [
+      "我今天的 Codex 额度还能用多少？帮我规划一下",
+      "打开 Codex 用量悬浮表盘",
+      "打开 Codex 用量仪表盘",
+      "导出一份最近的 Codex 用量报告"
+    ],
+    "screenshots": []
+  }
+}

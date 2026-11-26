@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "usage_coach": {
+      "command": "cmd.exe",
+      "args": ["/d", "/s", "/c", "call", "./scripts/launch-mcp.cmd", "./server/mcp-server.mjs"],
+      "cwd": ".",
+      "enabled": true,
+      "env_vars": [
+        "CODEX_MCP_NODE_PATH",
+        "CODEX_BROWSER_USE_NODE_PATH",
+        "CODEX_ELECTRON_RESOURCES_PATH",
+        "CODEX_CLI_PATH",
+        "CODEX_HOME",
+        "USERPROFILE",
+        "LOCALAPPDATA",
+        "APPDATA",
+        "PATH"
+      ],
+      "startup_timeout_sec": 30,
+      "tool_timeout_sec": 120,
+      "omit_tools_from": ["deferred"]
+    }
+  }
+}

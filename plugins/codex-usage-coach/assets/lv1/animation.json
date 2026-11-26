@@ -1,0 +1,8 @@
+{
+  "fps": 12,
+  "frameCount": 121,
+  "walkingRanges": [[18, 111]],
+  "idleRanges": [[1, 17], [112, 121]],
+  "speedPixelsPerSecond": 42,
+  "note": "PNG sequence has no timing metadata. 12 fps is the playback default; translate only during the walking range."
+}
