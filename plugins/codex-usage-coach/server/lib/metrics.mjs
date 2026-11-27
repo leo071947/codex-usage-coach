@@ -124,10 +124,10 @@ function buildDaySeries(days, now, timeZone, span) {
 /**
  * 主入口：把 points 变成展示/决策所需的事实集合。
  */
-export function buildMetrics({ points, config = {}, now = Date.now(), stats = {} } = {}) {
+export function buildMetrics({ points, config = {}, now = Date.now(), stats = {}, quotaSnapshot = null } = {}) {
   const timeZone = resolveTimeZone(config.timeZone);
   const fallback = Number(config.tokensPerPctFallback) || 2000000;
-  const snapshot = latestSnapshot(points);
+  const snapshot = quotaSnapshot ?? latestSnapshot(points);
   const warnings = [];
 
   const calibration = calibrateRatio(points, snapshot, WEEK_MS, fallback);
@@ -231,7 +231,7 @@ export function buildMetrics({ points, config = {}, now = Date.now(), stats = {}
     generatedAt: now,
     timeZone,
     snapshot: snapshot
-      ? { t: snapshot.t, ageMs, freshness: ageMs == null ? null : freshness(ageMs), p5: snapshot.p5, pw: snapshot.pw }
+      ? { t: snapshot.t, ageMs, freshness: ageMs == null ? null : freshness(ageMs), p5: snapshot.p5, pw: snapshot.pw, source: snapshot.source ?? 'session-log' }
       : null,
     weekly,
     fiveHour,

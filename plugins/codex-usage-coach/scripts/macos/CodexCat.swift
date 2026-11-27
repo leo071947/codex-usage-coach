@@ -27,8 +27,12 @@ struct Usage: Decodable {
     struct Quota: Decodable { var remainingPct: Double?; var resetsText: String? }
     struct Today: Decodable { var remainingText: String?; var usedText: String? }
     struct Feed: Decodable { var error: String? }
+    struct Snapshot: Decodable { var source: String? }
     var weekly: Quota?, fiveHour: Quota?, today: Today?, feed: Feed?
+    var snapshot: Snapshot?
     var account: String?, stale: Bool?
+    var live: Bool { snapshot?.source == "account/rateLimits/read" }
+    var delayed: Bool { stale == true || feed?.error != nil }
     static let empty = Usage()
 }
 
@@ -108,7 +112,9 @@ func text(_ string: String, rect: NSRect, size: CGFloat, color: NSColor, bold: B
     let font = NSFont.monospacedSystemFont(ofSize: size, weight: bold ? .bold : .regular)
     (string as NSString).draw(in: rect, withAttributes: [.font: font, .foregroundColor: color, .paragraphStyle: paragraph])
 }
-func percent(_ value: Double?) -> String { value.map { String(format: "%.0f%%", $0) } ?? "—" }
+func percent(_ value: Double?, delayed: Bool = false) -> String {
+    value.map { (delayed ? "~" : "") + String(format: "%.0f%%", $0) } ?? "—"
+}
 
 final class CatView: NSView {
     weak var owner: CatApp?
@@ -149,7 +155,7 @@ final class BubbleView: NSView {
     weak var owner: CatApp?
     override var isFlipped: Bool { true }
     override func mouseDown(with event: NSEvent) { owner?.toggleDetails() }
-    func orb(center: NSPoint, label: String, quota: Double?, tint: NSColor, age: Double, animate: Bool) {
+    func orb(center: NSPoint, label: String, quota: Double?, tint: NSColor, age: Double, animate: Bool, delayed: Bool) {
         guard !animate || (age > 0 && age < 3) else { return }
         guard let context = NSGraphicsContext.current?.cgContext else { return }
         if animate && age >= 2.4 {
@@ -199,7 +205,7 @@ final class BubbleView: NSView {
         NSColor(srgbRed: 0.94, green: 0.87, blue: 1, alpha: 0.9).setFill()
         NSRect(x: -16, y: -28, width: 12, height: 4).fill(); NSRect(x: -24, y: -20, width: 4, height: 8).fill()
         text(label, rect: NSRect(x: -31, y: -16, width: 62, height: 16), size: 9, color: .white)
-        text(percent(quota), rect: NSRect(x: -32, y: 0, width: 64, height: 25), size: 18, color: .white, bold: true)
+        text(percent(quota, delayed: delayed), rect: NSRect(x: -32, y: 0, width: 64, height: 25), size: delayed ? 15 : 18, color: .white, bold: true)
     }
     override func draw(_ dirtyRect: NSRect) {
         guard let app = owner else { return }
@@ -210,8 +216,8 @@ final class BubbleView: NSView {
         }
         let animate = app.motion && !app.details
         let age = ProcessInfo.processInfo.systemUptime - app.popStart
-        orb(center: NSPoint(x: bounds.midX - 44, y: 58), label: app.en ? "5 HOURS" : "5 小时", quota: data.fiveHour?.remainingPct, tint: NSColor(srgbRed: 0.42, green: 0.94, blue: 0.89, alpha: 1), age: age, animate: animate)
-        orb(center: NSPoint(x: bounds.midX + 44, y: 46), label: app.en ? "WEEK" : "本周", quota: data.weekly?.remainingPct, tint: NSColor(srgbRed: 0.88, green: 0.57, blue: 0.97, alpha: 1), age: age - 0.85, animate: animate)
+        orb(center: NSPoint(x: bounds.midX - 44, y: 58), label: app.en ? "5 HOURS" : "5 小时", quota: data.fiveHour?.remainingPct, tint: NSColor(srgbRed: 0.42, green: 0.94, blue: 0.89, alpha: 1), age: age, animate: animate, delayed: data.delayed)
+        orb(center: NSPoint(x: bounds.midX + 44, y: 46), label: app.en ? "WEEK" : "本周", quota: data.weekly?.remainingPct, tint: NSColor(srgbRed: 0.88, green: 0.57, blue: 0.97, alpha: 1), age: age - 0.85, animate: animate, delayed: data.delayed)
         if app.details {
             let rows: [(String,String)] = [
                 (app.en ? "Account" : "关联账号",data.account ?? "—"),
@@ -220,8 +226,8 @@ final class BubbleView: NSView {
                 (app.en ? "5h reset" : "5小时重置",data.fiveHour?.resetsText ?? "—"),
                 (app.en ? "Week reset" : "周额度重置",data.weekly?.resetsText ?? "—")]
             for (index,row) in rows.enumerated() { text(row.0 + "  " + row.1, rect: NSRect(x: 12, y: CGFloat(112 + index * 25), width: 286, height: 22), size: 10, color: .white) }
-            let warning = data.stale == true || data.feed?.error != nil
-            text(warning ? (app.en ? "Estimated / last known data" : "估算或上次同步数据") : (app.en ? "Budget is a plan, not official quota" : "建议预算不等于官方额度"), rect: NSRect(x: 12, y: 251, width: 286, height: 24), size: 9, color: .lightGray)
+            let source = data.delayed ? (app.en ? "Last known data · May be delayed" : "上次同步数据 · 可能延迟") : data.live ? (app.en ? "Live account quota" : "账户额度实时查询") : (app.en ? "Log snapshot · May be delayed" : "日志快照 · 可能延迟")
+            text(source, rect: NSRect(x: 12, y: 251, width: 286, height: 24), size: 9, color: .lightGray)
         }
     }
 }
@@ -255,7 +261,10 @@ final class CatApp: NSObject, NSApplicationDelegate {
         let pidURL = dataURL.deletingLastPathComponent().appendingPathComponent("dial-window.pid")
         try? String(ProcessInfo.processInfo.processIdentifier).write(to: pidURL, atomically: true, encoding: .utf8)
         let pump = Process(); pump.executableURL = URL(fileURLWithPath: node); pump.arguments = [pluginURL.appendingPathComponent("server/dial-feed.mjs").path,"--interval=" + interval]
-        var environment = ProcessInfo.processInfo.environment; environment["CODEX_HOME"] = home; pump.environment = environment
+        var environment = ProcessInfo.processInfo.environment; environment["CODEX_HOME"] = home
+        if let codex = argument("--codex") { environment["CODEX_CLI_PATH"] = codex }
+        if CommandLine.arguments.contains("--offline") { environment["USAGE_COACH_LIVE_LIMITS"] = "0" }
+        pump.environment = environment
         pump.standardOutput = FileHandle.nullDevice; pump.standardError = FileHandle.nullDevice
         do { try pump.run(); feed = pump } catch { alert("Could not start local usage feed: " + error.localizedDescription) }
         lastTick = ProcessInfo.processInfo.systemUptime; lastHost = lastTick
@@ -349,6 +358,11 @@ if CommandLine.arguments.contains("--self-test") {
     for _ in 0..<700 { timeline.advance(1.0/12, width: 200); precondition((0...200).contains(timeline.position)); turned = turned || timeline.direction < 0 }
     precondition(turned)
     precondition((try? JSONDecoder().decode(Usage.self, from: Data("{\"fiveHour\":{\"remainingPct\":70}}".utf8)))?.fiveHour?.remainingPct == 70)
+    let live = try! JSONDecoder().decode(Usage.self, from: Data("{\"snapshot\":{\"source\":\"account/rateLimits/read\"},\"stale\":false}".utf8))
+    precondition(live.live && !live.delayed)
+    let old = try! JSONDecoder().decode(Usage.self, from: Data("{\"stale\":true}".utf8))
+    precondition(old.delayed && !old.live)
+    precondition(percent(22, delayed: true) == "~22%" && percent(nil, delayed: true) == "—")
     print("Mac timeline and usage decoding passed.")
 } else {
     let app = NSApplication.shared

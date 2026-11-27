@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {quotaSnapshot} from '../plugins/codex-usage-coach/server/lib/live-quota.mjs';
+import {buildMetrics} from '../plugins/codex-usage-coach/server/lib/metrics.mjs';
+const snapshot=quotaSnapshot({rateLimitsByLimitId:{codex:{primary:{usedPercent:1,windowDurationMins:300,resetsAt:100},secondary:{usedPercent:79,windowDurationMins:10080,resetsAt:200}}}},123);
+assert.equal(snapshot.pw,79);assert.equal(snapshot.p5,1);assert.equal(snapshot.t,123);
+assert.equal(quotaSnapshot({rateLimits:{limitId:'other',primary:{usedPercent:1,windowDurationMins:300,resetsAt:100}}}),null);
+assert.equal(quotaSnapshot({rateLimits:{primary:{usedPercent:1,windowDurationMins:60,resetsAt:100}}}),null);
+const now=Date.now();
+const old={t:now-86400000,tk:20,pw:64,rw:Math.floor(now/1000)+86400,p5:20,r5:Math.floor(now/1000)+100};
+const live={t:now,pw:79,rw:old.rw,p5:2,r5:Math.floor(now/1000)+18000,source:'account/rateLimits/read'};
+const metrics=buildMetrics({points:[old],now,quotaSnapshot:live});
+assert.equal(metrics.weekly.remainingPct,21);
+assert.equal(metrics.fiveHour.remainingPct,98);
+assert.equal(metrics.snapshot.source,'account/rateLimits/read');
+assert.equal(metrics.burn.totalTurns,1,'Account refresh must not become a fake chat turn');
+console.log('Account quota bucket selection and window validation passed.');

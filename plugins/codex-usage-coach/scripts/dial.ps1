@@ -337,6 +337,7 @@ function Draw-OrbPair($g,[int]$w,$d) {
   $five='—';$week='—'
   if($d.fiveHour -and $null -ne $d.fiveHour.remainingPct){$five=('{0:0.#}%' -f $d.fiveHour.remainingPct)}
   if($d.weekly -and $null -ne $d.weekly.remainingPct){$week=('{0:0.#}%' -f $d.weekly.remainingPct)}
+  if($d.stale){if($five -ne '—'){$five='~'+$five};if($week -ne '—'){$week='~'+$week}}
   $first='5 小时';$second='本周'
   if($script:lang -eq 'en'){$first='5 HOURS';$second='WEEK'}
   $age=0.8
@@ -391,7 +392,8 @@ function Draw-UsageBubble($g,[int]$w,[int]$h,$d,[bool]$details,[single]$tailX) {
     $g.DrawLine($divider,16,105,($w-16),105);$divider.Dispose()
     $y=117
     foreach($row in $rows){Draw-Text $g $row[0] $script:F.Small $muted 16 $y;Draw-TextRight $g $row[1] $script:F.Small $C.Text ($w-16) $y ($w-113);$y+=24}
-    $hint='建议预算不等于官方额度 · 点击收起';if($en){$hint='Budget is a plan, not a quota · Click to close'}
+    $hint='日志快照 · 可能延迟';if($en){$hint='Log snapshot · May be delayed'}
+    if($d.snapshot.source -eq 'account/rateLimits/read'){$hint='账户额度实时查询';if($en){$hint='Live account quota'}}
     Draw-Text $g $hint $script:F.Tiny $muted 16 ($h-38)
   }
 }

@@ -14,7 +14,7 @@ macOS 实现目前为**待实机验收的源码版本**：已提供原生窗口�
 - 气泡发出后与猫咪分离，保留出生点。右键详情在猫咪头顶展开；支持拖动、关闭动效和中英文切换。
 - 提供网页仪表盘、历史用量和 Markdown 报告。
 
-桌宠是 Windows 透明附着窗口，并非注入 Codex 内部的组件。自动启动发生在 Codex 加载本插件的 MCP 服务时；客户端延迟加载服务时，猫咪也会延迟出现。
+Windows 使用透明附着窗口，macOS 使用原生透明面板；两者均为独立进程。自动启动发生在 Codex 加载本插件的 MCP 服务时；客户端延迟加载服务时，猫咪也会延迟出现。
 
 ## 环境要求
 
@@ -24,29 +24,108 @@ macOS 实现目前为**待实机验收的源码版本**：已提供原生窗口�
 
 Windows 使用 PowerShell/.NET；macOS 使用 Swift/AppKit，要求 macOS 12+、Xcode Command Line Tools 和辅助功能权限。源码在本机编译，Intel 与 Apple Silicon 分别生成对应架构，不提供未经验证的预编译安装包。无需安装 npm 依赖。
 
-## macOS 安装与启动（源码版）
+## macOS 下载和安装（源码版）
 
-下载完整仓库后，在终端进入仓库目录：
+Windows 和 Mac 使用**同一个仓库、同一份 ZIP**，不需要分别建立仓库。当前没有可直接拖进「应用程序」的 `.dmg` 安装包，首次安装需要在 Mac 终端运行脚本，由本机编译猫咪应用。macOS 编译和实机验证状态见 [Mac 验收说明](docs/macos-testing.md)。
+
+### 1. 下载完整仓库
+
+1. 打开 [GitHub 仓库](https://github.com/lei071947/codex-usage-coach)。
+2. 点击绿色 **Code → Download ZIP**，双击下载的 ZIP 解压。
+3. 将解压文件夹放到固定位置，例如「文稿」。文件夹名可能是 `codex-usage-coach-main`，里面应有 `install-macos.sh`、`plugins`、`.agents` 和 `README.md`；Finder 默认隐藏点开头的目录，可用 `Command + Shift + .` 查看。
+
+请保留完整文件夹。安装器将它注册为本地插件市场，后续更新仍需要使用它。
+
+### 2. 安装依赖（首次需要）
+
+- 安装并登录 Codex 桌面版。
+- 安装适用于当前 macOS 的 [Node.js](https://nodejs.org/en/download)（18 或更高版本，包含 npm），然后重新打开终端；修改 PATH 后也要重启 Codex。
+- 打开「终端」，检查 Node，并安装或更新 Codex CLI：
+
+```bash
+node --version
+npm install -g @openai/codex@latest
+codex --version
+codex plugin --help
+```
+
+CLI 安装命令依据 [OpenAI 官方文档](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex)。如果已安装且 `codex plugin --help` 正常，可以跳过 npm 安装。不要因为 npm 权限报错就使用 `sudo`；应先修正 Node 安装方式或 npm 的用户目录。
+
+本机编译还需要 Apple 命令行开发工具：
+
+```bash
+xcode-select --install
+```
+
+完成系统弹窗中的安装后再继续；提示已经安装则可跳过。无需安装完整 Xcode，也无需在此仓库执行 `npm install`。
+
+### 3. 进入目录并安装
+
+在终端输入 `cd` 加一个空格，把解压的**整个文件夹**从 Finder 拖到终端，再按回车。随后执行：
 
 ```bash
 bash install-macos.sh
 ```
 
-安装器要求 `node` 和 `codex` 在 PATH 中；Codex CLI 路径也可通过 `CODEX_CLI_PATH` 指定。首次本机编译需要 Xcode Command Line Tools，未安装时运行 `xcode-select --install` 并完成系统安装提示。编译成功后注册同一个本地市场和插件，无需另建 Mac 仓库。
+脚本先编译本机架构的 App，再注册 `lucky-usage` 本地市场、安装插件并列出结果。Apple Silicon 和 Intel 使用同样的步骤。安装成功后重启 Codex；插件 MCP 服务加载时会启动猫咪。
 
-也可直接测试猫咪，无需先注册插件：
+如果暂时只想测试猫咪，可在同一目录执行：
 
 ```bash
 bash start-macos.sh
 ```
 
-首次打开时，在 **系统设置 → 隐私与安全性 → 辅助功能** 中允许 **Codex Usage Cat**。菜单栏 `CAT` 菜单提供权限设置入口、语言、动效和退出；授权由用户操作，程序不会替你修改系统权限。找不到输入框时隐藏，不使用猜测坐标。代码只读取控件名称、类型与几何位置，不读取输入框内容。
+手动启动时应保持 Codex 正在运行；检测不到 Codex 时，猫咪会在约 5 秒后退出。
 
-运行时生成在 `${CODEX_HOME:-~/.codex}/usage-coach/runtime/CodexUsageCat.app`，编译日志在 `usage-coach/mac-build.log`。这是本机编译、临时签名的开发应用，不是 Apple 公证发行包；更新二进制后系统可能需要重新授予辅助功能权限。
+### 4. 授予辅助功能权限
 
-Mac 客户端复用相同 121 帧、12 fps 行走停步、左右错峰上浮爆裂和进度填充；使用原生 macOS 菜单。窗口保持普通层级，仅 Codex 在前台时出现，退出 Codex 后关闭数据泵并退出。用 `bash uninstall-macos.sh` 移除插件，默认保留使用数据和编译缓存。
+1. 启动后找到菜单栏的 **CAT → 辅助功能设置**，或打开 **系统设置 → 隐私与安全性 → 辅助功能**（macOS 12 位于「系统偏好设置 → 安全性与隐私 → 隐私」）。
+2. 启用 **Codex Usage Cat**。若列表中没有它，点击 `+`，按 `Command + Shift + G`，输入下面目录并选择其中的 App：
 
-## 下载和安装
+```text
+~/.codex/usage-coach/runtime/CodexUsageCat.app
+```
+
+3. 回到 Codex，打开有输入框的聊天。权限生效后猫咪才会显示；必要时退出猫咪，再运行 `bash start-macos.sh`。
+
+使用自定义 `CODEX_HOME` 时，App 在该目录下的 `usage-coach/runtime`。这是本机编译并临时签名的开发应用，尚非 Apple 公证安装包；更新后系统可能要求重新授权。程序只读取控件名称、类型和位置，不读取输入框内容。
+
+### 5. 确认安装成功
+
+- 安装命令正常结束，插件列表中出现 `codex-usage-coach`。
+- Codex 在前台且输入框可见时，猫咪沿输入框行走；切换其他应用或最小化 Codex 时隐藏，退出 Codex 后退出。
+- 停步时显示两个错峰上浮、放大和爆裂的像素气泡；右键「查看余量详情」在猫咪头顶展开卡片。
+- 额度优先查询当前账号，默认约每 30 秒刷新；详情出现「账户额度实时查询」表示使用账户接口。回退日志时标注来源，过期数据带 `~`，没有数据为 `—`。不需要另填 API Key。
+- 右键或 CAT 菜单可切换中文 / English、动效和退出。Mac 使用系统原生菜单。
+
+### 更新与卸载
+
+先从 CAT 菜单退出猫咪并完全退出 Codex，下载新 ZIP，把**完整仓库内容（包含隐藏目录）**更新到原固定目录，再在该目录重新运行 `bash install-macos.sh`，完成后重启 Codex。若改了存放位置，应先在旧目录卸载，再从新目录安装。不要只更新 README 或 Swift 单个文件，额度读取还依赖共享 Node 代码。
+
+```bash
+bash uninstall-macos.sh
+```
+
+卸载默认保留 `~/.codex/usage-coach` 内的数据和编译缓存。安装器能自动尝试 `/Applications/Codex.app/Contents/Resources/codex`；找不到 CLI 时可指定实际可执行文件：
+
+```bash
+CODEX_CLI_PATH="/实际路径/codex" bash install-macos.sh
+CODEX_CLI_PATH="/实际路径/codex" bash start-macos.sh
+```
+
+建议把 `codex` 安装到 PATH 中，使重启 Codex 后的自动启动和额度查询也能找到它。手动指定变量只对本次命令有效。
+
+### Mac 常见问题
+
+| 现象 | 处理方式 |
+| --- | --- |
+| `node` / `codex` 找不到 | 检查上述版本命令；安装依赖后重新打开终端和 Codex。 |
+| `xcrun` / `swiftc` 报错 | 完成 `xcode-select --install` 后重试；查看 `~/.codex/usage-coach/mac-build.log`。 |
+| 已安装但没猫咪 | 保持 Codex 在前台、输入框可见；检查辅助功能权限并尝试 `bash start-macos.sh`。 |
+| 有猫咪但额度旧 | 检查网络、CLI 与桌面版是否使用相同账号和 `CODEX_HOME`；查看详情来源与 `usage-coach/coach.log`。 |
+| 更新后不出现 | 确认插件缓存已更新、旧进程已退出；在辅助功能中重新授权新编译的 App。 |
+
+## Windows 下载和安装
 
 从 GitHub 下载仓库 ZIP 并解压，或克隆仓库。打开 PowerShell，进入解压后的 `codex-usage-coach` 目录：
 
@@ -86,15 +165,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\start-dial.ps1
 
 ## 数据和隐私
 
-所有分析在本机离线进行，不上传数据：
+日志分析在本机进行。额度刷新优先通过本机 Codex app-server 的官方只读 `account/rateLimits/read` 接口，需要联网；不创建任务、不调用模型、不上传会话内容。接口不可用时回退到日志快照，详情标注来源，旧快照以 `~` 提示可能延迟。设置 `USAGE_COACH_LIVE_LIMITS=0` 可关闭联网额度读取。
 
 - 默认读取 `~/.codex/sessions` 和 `~/.codex/archived_sessions` 中的用量事件。
 - 从当前 Codex 主目录的 `auth.json` 本地解析套餐及账号，仅显示脱敏邮箱。
 - 用 `CODEX_HOME` 指向其他 Codex 主目录；`USAGE_COACH_SESSIONS` 可追加日志目录。
 - 缓存、报告、语言偏好及诊断状态写到当前 Codex 主目录下的 `usage-coach`，不写入仓库。
-- 自动定位只读取 Windows 无障碍控件的类型、名称和位置，不读取输入框内容。
+- 自动定位只读取 Windows / macOS 无障碍控件的类型、名称和位置，不读取输入框内容。
 
-官方额度百分比来自日志里的快照。token 余额按历史样本折算，是估算值；今日建议预算是插件的规划值，**不等于官方额度**，建议预算为 0 不代表无法继续使用 Codex。快照过旧或同步失败时，详情会保留快照时间或旧数据；没有快照时显示 `—`。
+额度百分比优先来自账户只读接口，不可用时来自日志快照。token 余额按历史样本折算，是估算值；今日建议预算是插件的规划值，**不等于官方额度**，建议预算为 0 不代表无法继续使用 Codex。快照过旧或同步失败时会保留旧数据并标注可能延迟；没有快照时显示 `—`。
 
 本机日志可能包含多个账号或多个会话的消耗，无法完整按账号隔离。该工具不能替代官方用量页面。
 

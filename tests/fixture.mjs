@@ -7,6 +7,7 @@ export const testHome=fs.mkdtempSync(path.join(os.tmpdir(),'usage-coach-test-'))
 process.env.CODEX_HOME=testHome;
 delete process.env.USAGE_COACH_SESSIONS;
 process.env.USAGE_COACH_AUTO_PET='0';
+process.env.USAGE_COACH_LIVE_LIMITS='0';
 const sessions=path.join(testHome,'sessions');
 fs.mkdirSync(sessions);
 const now=Date.now();

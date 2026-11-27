@@ -84,7 +84,7 @@ export function dialState({ metrics, plan, account, config = {} }) {
     stale: Boolean(snap && ['stale', 'old', 'veryold'].includes(freshness?.level)),
     freshness: freshness ? { level: freshness.level, label: freshness.label, icon: freshness.icon } : null,
     snapshot: snap
-      ? { at: snap.t, ageMs: snap.ageMs, ageText: `${fmtDur(snap.ageMs)}前`, atText: fmtDateTime(snap.t, tz), estimated: Boolean(weekly?.estimated) }
+      ? { at: snap.t, ageMs: snap.ageMs, ageText: `${fmtDur(snap.ageMs)}前`, atText: fmtDateTime(snap.t, tz), estimated: Boolean(weekly?.estimated), source: snap.source ?? 'session-log' }
       : null,
     account: head || null,
     basis: plan.basis,
